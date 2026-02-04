@@ -7,9 +7,6 @@ ETL-модуль для извлечения данных о прослушан�
 - Трансформация: агрегация по артистам и датам.
 - Возврат готового DataFrame.
 
-Требования:
-- Пакеты: requests, pandas, python-dotenv.
-- Файл .env с переменными USER_ID и TOKEN.
 """
 
 import pandas as pd
@@ -20,8 +17,8 @@ from dotenv import load_dotenv
 import os 
 
 load_dotenv()
-USER_ID = os.getenv("USER_ID")
-TOKEN = os.getenv("TOKEN")
+USER_ID = os.getenv("SPOTIFY_USER_ID")
+TOKEN = os.getenv("SPOTIFY_TOKEN")
 
 if not USER_ID or not TOKEN:
     raise ValueError("Переменные USER_ID и\или TOKEN не найдены в .env")
