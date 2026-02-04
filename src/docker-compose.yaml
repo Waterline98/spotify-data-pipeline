@@ -1,0 +1,143 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements. See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership. The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License. You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+# Конфигурация Docker Compose для локального запуска Apache Airflow (версия 2.5.1)
+# ВНИМАНИЕ: предназначена ТОЛЬКО для разработки/тестирования. Не используйте в продакшене!
+#
+# Поддерживаемые переменные окружения (можно задать в .env или через export):
+# - AIRFLOW_IMAGE_NAME: образ Airflow (по умолчанию: apache/airflow:2.5.1)
+# - AIRFLOW_UID: UID пользователя в контейнерах (по умолчанию: 50000)
+# - AIRFLOW_PROJ_DIR: путь к проекту (по умолчанию: .)
+# - _AIRFLOW_WWW_USER_USERNAME: логин админа (по умолчанию: airflow)
+# - _AIRFLOW_WWW_USER_PASSWORD: пароль админа (по умолчанию: airflow)
+# - _PIP_ADDITIONAL_REQUIREMENTS: дополнительные пакеты pip (по умолчанию: пусто)
+
+version: '3.8'
+
+x-airflow-common:
+  &airflow-common
+  image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:2.5.1}
+  environment:
+    &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CORE__FERNET_KEY: ''  # Ключ шифрования (в проде нужно сгенерировать!)
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'true'  # Загружать примеры DAG
+    AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
+    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
+  volumes:
+    - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags  # Монтируем DAG
+    - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs  # Монтируем логи
+    - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins  # Монтируем плагины
+  user: "${AIRFLOW_UID:-50000}:0"  # Пользователь в контейнере
+  depends_on:
+    &airflow-common-depends-on
+    postgres:
+      condition: service_healthy  # Ждём готовности PostgreSQL
+
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data  # Объём для данных
+    ports:
+      - 5432:5432  # Порт для подключения извне
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 5
+    restart: always
+
+  airflow-webserver:
+    <<: *airflow-common  # Наследуем общие настройки
+    command: webserver
+    ports:
+      - 8080:8080  # Веб‑интерфейс Airflow
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully  # Ждём инициализации
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"']
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-triggerer:
+    <<: *airflow-common
+    command: triggerer
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type TriggererJob --hostname "$${HOSTNAME}"']
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    environment:
+      <<: *airflow-common-env
+      _AIRFLOW_DB_UPGRADE: 'true'  # Мигрировать БД
+      _AIRFLOW_WWW_USER_CREATE: 'true'  # Создать пользователя админа
+      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
+      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
+      _PIP_ADDITIONAL_REQUIREMENTS: ''  # Не устанавливать доп. пакеты при инициализации
+    user: "0:0"  # Root для инициализации
+    volumes:
+      - ${AIRFLOW_PROJ_DIR:-.}:/sources  # Монтируем проект для доступа к файлам
+
+  airflow-cli:
+    <<: *airflow-common
+    profiles:
+      - debug  # Профиль для отладки
+    environment:
+      <<: *airflow-common-env
+      CONNECTION_CHECK_MAX_COUNT: "0"  # Отключаем проверку соединений
+    command:
+      - bash
+      - -c
+      - airflow  # Запускаем CLI
+
+volumes:
+  postgres-db-volume:  # Объём для данных PostgreSQL
+

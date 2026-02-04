@@ -68,7 +68,6 @@ def etl_process():
 
     # Шаг 2: Подключение к PostgreSQL через Airflow Connection
     try:
-        # ------------------настроить в Airflow UI---------------
         hook = PostgresHook(postgres_conn_id="postgre_sql")
         connection = hook.get_connection("postgre_sql")
 
