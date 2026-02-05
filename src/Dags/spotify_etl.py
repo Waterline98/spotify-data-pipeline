@@ -6,7 +6,6 @@ ETL-модуль для извлечения данных о прослушан�
 - Проверка качества данных (пустота, дубликаты, NULL).
 - Трансформация: агрегация по артистам и датам.
 - Возврат готового DataFrame.
-
 """
 
 import pandas as pd
@@ -23,7 +22,6 @@ TOKEN = os.getenv("SPOTIFY_TOKEN")
 if not USER_ID or not TOKEN:
     raise ValueError("Переменные USER_ID и\или TOKEN не найдены в .env")
 
-# Настройка логирования
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -87,7 +85,6 @@ def return_dataframe() -> pd.DataFrame:
         except KeyError as e:
             logger.warning(f"Пропущен элемент из-за отсутствующего ключа: {e}")
 
-    # Создание DataFrame
     df = pd.DataFrame({
         "song_name": song_names,
         "artist_name": artist_names,
@@ -116,8 +113,7 @@ def data_quality(df: pd.DataFrame) -> bool:
     logger.info("Проверка качества данных")
 
     if df.empty:
-        logger.error("Данные отсутствуют: DataFrame пуст")
-        return False
+        raise ValueError("DataFrame пуст")
 
     if not df['played_at'].is_unique:
         raise ValueError("Обнаружены дубликаты в колонке 'played_at'")

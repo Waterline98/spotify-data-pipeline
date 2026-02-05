@@ -25,7 +25,7 @@ def get_db_engine():
     if not all([db_host, db_port, db_name, db_user, db_pass]):
         raise ValueError("Не все переменные окружения для БД заданы в .env")
 
-    database_url = f"postgresql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
+    database_url = f"postgresql+psycopg2://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
     return create_engine(database_url)
 
 

@@ -1,4 +1,4 @@
-import Extract
+from spotify_data_extractor import get_recently_played_tracks
 import pandas as pd
 
 
@@ -62,8 +62,8 @@ def Transform_df(load_df):
 
 
 if __name__ == "__main__":
-    # Импорт DataFrame с данными о прослушиваниях
-    load_df = Extract.return_dataframe()
+    # Импорт DataFrame с данными о прослушиваниях. Fix spotify_etl.py function return_dataframe()!
+    load_df = get_recently_played_tracks(days_back=1)
 
     # Проверка качества данных
     Data_Quality(load_df)

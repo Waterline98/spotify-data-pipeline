@@ -1,23 +1,35 @@
 
-# Spotify ETL Project
+# Spotify Data Pipeline
 
-Development of a complete data processing cycle (ETL) for the Spotify platform: writing Python code and configuring automation in Apache Airflow.
+ETL‑пайплайн для извлечения данных о прослушанных треках из Spotify API и загрузки в PostgreSQL через Apache Airflow.
 
-Разработка полного цикла обработки данных (ETL) для платформы Spotify: написание кода на Python и настройка автоматизации в Apache Airflow.
+## Функционал
+
+* Извлечение данных о последних 50 треках за последние 24 часа из Spotify API.
+* Проверка качества данных (пустота, дубликаты, NULL‑значения).
+* Трансформация: агрегация по артистам и датам.
+* Загрузка в PostgreSQL с использованием Airflow.
+
+## Струтура проекта
+
+Spotify-data-pipeline/
+├── .gitignore              
+├── requirements.txt        
+└── src/                    
+    ├── Dags/               
+    │   ├── spotify_etl_dag.py  # Главный DAG: запускает ETL‑процесс каждые 50 мин
+    │   └── spotify_etl.py     # Вспомогательный модуль для DAG: содержит логику ETL
+    ├── data_processing.py    # Обработка и трансформация данных
+    ├── docker-compose.yaml  # Конфигурация Docker для локального запуска
+    ├── drop_tables.py      # Скрипт для удаления таблиц из PostgreSQL
+    ├── load_music_data_to_postgres.py  # Загрузка данных в PostgreSQL
+    └── spotify_data_extractor.py  # Извлечение данных из Spotify API
 
 ## Требования
 
-- Python 3.8+
-- Spotify API-токен
-
-## Установка
-
-1. Создайте `.env` файл:
-USER_ID=ваш_id
-TOKEN=ваш_токен
-
-2. Установите зависимости:
-```bash
-pip install -r requirements.txt
+* Python 3.8+
+* PostgreSQL 13+
+* Apache Airflow 2.5.1+
+* Spotify API‑токен
 
 
