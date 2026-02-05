@@ -20,7 +20,6 @@ from spotify_etl import spotify_etl
 
 
 
-# Конфигурация DAG
 default_args = {
     "owner": "airflow",
     "depends_on_past": False,
@@ -73,7 +72,7 @@ def etl_process():
 
         # Формируем URL для SQLAlchemy
         db_url = (
-            f"postgresql://{connection.login}:{connection.password}"
+            f"postgresql+psycopg2://{connection.login}:{connection.password}"
             f"@{connection.host}:{connection.port}/{connection.schema}"
         )
         engine = create_engine(db_url)
@@ -93,9 +92,7 @@ def etl_process():
 
 
 
-# Определение задач DAG
 with dag:
-    # Задача 1: Создание таблицы (если не существует)
     create_table = PostgresOperator(
         task_id="create_table",
         postgres_conn_id="postgre_sql",
@@ -112,7 +109,7 @@ with dag:
         database="demo",
     )
 
-    # Задача 2: Запуск ETL‑процесса
+
     run_etl = PythonOperator(
         task_id="spotify_etl_final",
         python_callable=etl_process,

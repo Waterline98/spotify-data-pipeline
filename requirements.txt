@@ -8,6 +8,3 @@ python-decouple
 
 # Для тестирования
 #pytest==8.3.2
-
-
-#pip freeze > requirements.txt

@@ -12,7 +12,6 @@ SPOTIFY_TOKEN = os.getenv("SPOTIFY_TOKEN")
 if not SPOTIFY_TOKEN:
     raise ValueError("Токен Spotify не найден в .env. Проверьте переменную SPOTIFY_TOKEN.")
 
-#----------              ------------------
 
 def get_recently_played_tracks(days_back: int = 2) -> pd.DataFrame:
     """
