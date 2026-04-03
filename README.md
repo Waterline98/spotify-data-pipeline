@@ -1,14 +1,21 @@
 
 # Spotify Data Pipeline
 
-ETL‑пайплайн для извлечения данных о прослушанных треках из Spotify API и загрузки в PostgreSQL через Apache Airflow.
+Multi-tenant ETL-пайплайн: Spotify -> Postgres staging -> ClickHouse (DWH) через Apache Airflow.
+
+В аналитике прослушивания считаются "по всем артистам трека" (`track.artists`), а агрегации считаются в ClickHouse.
 
 ## Функционал
+* Извлечение `recently-played` из Spotify API (по cursor `after`) для каждого tenant/user.
+* Идемпотентная загрузка в Postgres staging через дедупликацию по `event_hash` (без `replace`).
+* Загрузка новых событий в ClickHouse и построение дневной агрегации `artist_daily` по всем артистам.
 
-* Извлечение данных о последних 50 треках за последние 24 часа из Spotify API.
-* Проверка качества данных (пустота, дубликаты, NULL‑значения).
-* Трансформация: агрегация по артистам и датам.
-* Загрузка в PostgreSQL с использованием Airflow.
+## Настройка
+* В Airflow должен быть создан Connection с id `postgre_sql`, указывающий на Postgres staging (где будут созданы `stg_*` таблицы).
+* Для multi-tenant укажите `SPOTIFY_ACCOUNTS_JSON` как JSON-массив объектов `{ tenant_id, spotify_user_id, spotify_token }`.
+* Либо оставьте fallback single-tenant: `TENANT_ID` (опционально), `SPOTIFY_USER_ID`, `SPOTIFY_TOKEN`.
+* Для ClickHouse задайте: `CLICKHOUSE_HOST`, `CLICKHOUSE_PORT` (по умолчанию 9000), `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, `CLICKHOUSE_DATABASE` (по умолчанию `spotify`).
+* Для точной настройки курсора (window): `SPOTIFY_CURSOR_OVERLAP_MINUTES` и `SPOTIFY_INITIAL_LOOKBACK_HOURS`.
 
 ## Струтура проекта
 
@@ -16,20 +23,18 @@ Spotify-data-pipeline/
 ├── .gitignore              
 ├── requirements.txt        
 └── src/                    
-    ├── Dags/               
-    │   ├── spotify_etl_dag.py  # Главный DAG: запускает ETL‑процесс каждые 50 мин
-    │   └── spotify_etl.py     # Вспомогательный модуль для DAG: содержит логику ETL
-    ├── data_processing.py    # Обработка и трансформация данных
-    ├── docker-compose.yaml  # Конфигурация Docker для локального запуска
-    ├── drop_tables.py      # Скрипт для удаления таблиц из PostgreSQL
-    ├── load_music_data_to_postgres.py  # Загрузка данных в PostgreSQL
-    └── spotify_data_extractor.py  # Извлечение данных из Spotify API
+    ├── Dags/
+    │   ├── spotify_staging_pipeline_dag.py
+    │   └── spotify_clickhouse_loader_dag.py
+    ├── spotify_pipeline/
+    └── docker-compose.yaml
 
 ## Требования
 
 * Python 3.8+
 * PostgreSQL 13+
 * Apache Airflow 2.5.1+
-* Spotify API‑токен
+* ClickHouse
+* Spotify API-токены для tenant/user
 
 
